@@ -3,4 +3,6 @@ kind: Kustomization
 
 resources:
   - jwt-secret.yml
+  - cloudflare-api-token-secret.yml
   - rabbitmq.yml
+  - external-dns.yml
