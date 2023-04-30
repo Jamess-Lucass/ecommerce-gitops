@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ecommerce-shop-ui
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: myimage=ghcr.io/jamess-lucass/ecommerce-shop-ui:main
+    argocd-image-updater.argoproj.io/myimage.update-strategy: digest
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Jamess-Lucass/ecommerce-shop-ui
+    targetRevision: HEAD
+    path: deploy/envs/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+      jsonPointers:
+        - /spec/metrics
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

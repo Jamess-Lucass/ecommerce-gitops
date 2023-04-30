@@ -6,6 +6,7 @@ resources:
   - https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.20.2/controller.yaml
   - https://github.com/zalando/postgres-operator/manifests
   - https://github.com/rabbitmq/cluster-operator/releases/download/v2.2.0/cluster-operator.yml
+  - argocd
 
   # Mongo Operator
   - https://raw.githubusercontent.com/mongodb/mongodb-kubernetes-operator/v0.7.9/config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml
