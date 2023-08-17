@@ -1,17 +1,19 @@
+resource "kubectl_manifest" "application" {
+  yaml_body  = <<-EOF
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: ecommerce-internal-ui
+  name: ${var.name}
   namespace: argocd
   annotations:
-    argocd-image-updater.argoproj.io/image-list: myimage=ghcr.io/jamess-lucass/ecommerce-internal-ui:main
+    argocd-image-updater.argoproj.io/image-list: myimage=${var.image_name}:${var.image_tag}
     argocd-image-updater.argoproj.io/myimage.update-strategy: digest
 spec:
   project: default
   source:
-    repoURL: https://github.com/Jamess-Lucass/ecommerce-internal-ui
+    repoURL: ${var.repo}
     targetRevision: HEAD
-    path: deploy/envs/prod
+    path: ${var.path}
   destination:
     server: https://kubernetes.default.svc
     namespace: default
@@ -30,3 +32,5 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+EOF
+}
