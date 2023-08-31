@@ -40,8 +40,6 @@ resource "azurerm_kubernetes_cluster" "aks" {
   ]
 }
 
-data "azurerm_client_config" "current" {}
-
 resource "azurerm_user_assigned_identity" "aks_workload_identity" {
   location            = azurerm_resource_group.rg.location
   name                = "aks-workload-identity"

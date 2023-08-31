@@ -18,11 +18,23 @@ terraform {
       source  = "gavinbunney/kubectl"
       version = ">= 1.14.0"
     }
+
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = ">= 2.41.0"
+    }
   }
 }
 
+data "azurerm_client_config" "current" {}
+data "azuread_client_config" "current" {}
+
 provider "azurerm" {
   features {}
+}
+
+provider "azuread" {
+  tenant_id = data.azurerm_client_config.current.tenant_id
 }
 
 provider "helm" {
