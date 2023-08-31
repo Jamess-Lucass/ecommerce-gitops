@@ -197,52 +197,42 @@ resource "kubernetes_ingress_v1" "kibana_ingress" {
 }
 
 # Configuration
-# resource "kubectl_manifest" "kibana" {
-#   yaml_body = <<-EOF
-# apiVersion: beat.k8s.elastic.co/v1beta1
-# kind: Beat
-# metadata:
-#   name: heartbeat
-#   namespace: ${local.namespace}
-# spec:
-#   type: heartbeat
-#   version: ${local.version}
-#   elasticsearchRef:
-#     name: ${local.elastic_search_name}
-#     namespace: ${local.namespace}
-#   config:
-#     heartbeat.monitors:
-#       - type: http
-#         id: identity-service
-#         tags: ["identity", "service"]
-#         name: Identity Service
-#         schedule: "@every 10s"
-#         hosts: ["identity-service-service.default.svc:80/api/healthz"]
-#         check.response:
-#           status: [200]
-#           body:
-#             - Healthy
-#       - type: http
-#         id: api-gateway
-#         tags: ["api-gateway", "service"]
-#         name: API Gateway
-#         schedule: "@every 10s"
-#         hosts: ["api-gateway-service.default.svc:80/api/healthz"]
-#         check.response:
-#           status: [200]
-#           body:
-#             - Healthy
-#   deployment:
-#     podTemplate:
-#       spec:
-#         dnsPolicy: ClusterFirstWithHostNet
-#         securityContext:
-#           runAsUser: 0
+resource "kubectl_manifest" "heartbeat" {
+  yaml_body = <<-EOF
+apiVersion: beat.k8s.elastic.co/v1beta1
+kind: Beat
+metadata:
+  name: heartbeat
+  namespace: ${local.namespace}
+spec:
+  type: heartbeat
+  version: ${local.version}
+  elasticsearchRef:
+    name: ${local.elastic_search_name}
+    namespace: ${local.namespace}
+  config:
+    heartbeat.monitors:
+      - type: http
+        id: identity-service
+        tags: ["identity", "service"]
+        name: Identity Service
+        schedule: "@every 10s"
+        hosts: ["ecommerce-identity-service.default.svc:80/api/healthz"]
+        check.response:
+          status: [200]
+          body:
+            - Healthy
+  deployment:
+    podTemplate:
+      spec:
+        dnsPolicy: ClusterFirstWithHostNet
+        securityContext:
+          runAsUser: 0
 
-# EOF
+EOF
 
-#   depends_on = [
-#     helm_release.elastic,
-#     kubernetes_namespace.elastic_namespace
-#   ]
-# }
+  depends_on = [
+    helm_release.elastic,
+    kubernetes_namespace.elastic_namespace
+  ]
+}

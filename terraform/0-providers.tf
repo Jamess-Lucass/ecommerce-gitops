@@ -1,5 +1,13 @@
 # Configure the Azure provider
 terraform {
+  cloud {
+    organization = "jameslucas1210"
+
+    workspaces {
+      name = "ecommerce-prod"
+    }
+  }
+
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
