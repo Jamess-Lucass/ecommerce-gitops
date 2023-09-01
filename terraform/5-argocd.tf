@@ -2,6 +2,11 @@ locals {
   argocd_ingress_host = "argocd.jameslucas.uk"
 }
 
+variable "ARGO_CD_ADMIN_EMAIL" {
+  type        = string
+  description = "Email Address of user in Azure AD who wants to be assigned Admin role in Argo CD."
+}
+
 resource "azuread_group" "argocd_admins" {
   display_name     = "ArgoCD Admins"
   owners           = [data.azuread_client_config.current.object_id]
@@ -60,74 +65,52 @@ resource "helm_release" "argocd" {
   namespace        = "argocd"
   create_namespace = true
 
-  set {
-    name  = "server.extraArgs[0]"
-    value = "--insecure"
-  }
+  values = [yamlencode({
+    server = {
+      extraArgs = ["--insecure"]
+      ingress = {
+        enabled = true
+        annotations = {
+          "external-dns.alpha.kubernetes.io/cloudflare-proxied" = true
+        }
+        ingressClassName = "nginx"
+        hosts = [local.argocd_ingress_host]
+      }
+    }
 
-  set {
-    name  = "server.ingress.enabled"
-    value = true
-  }
+    configs = {
+      cm = {
+        url = "https://${local.argocd_ingress_host}"
+        "admin.enabled" = false
+        "oidc.config" = yamlencode({
+          name = "Azure"
+          issuer = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0"
+          clientID = "${azuread_application.argocd.application_id}"
+          clientSecret = "$oidc.azure.clientSecret"
+          requestedIDTokenClaims = {
+            groups = {
+              essential= true
+            }
+          }
+          requestedScopes = ["openid", "profile", "email"]
+        })
+      }
 
-  set {
-    name  = "server.ingress.annotations.external-dns.alpha.kubernetes.io/cloudflare-proxied"
-    value = "true"
-  }
+      secret = {
+        extra = {
+          "oidc.azure.clientSecret" = azuread_application_password.argocd_sso.value
+        }
+      }
 
-  set {
-    name  = "server.ingress.ingressClassName"
-    value = "nginx"
-  }
-
-  set {
-    name  = "server.ingress.hosts[0]"
-    value = local.argocd_ingress_host
-  }
-
-  set {
-    name  = "configs.cm.url"
-    value = "https://${local.argocd_ingress_host}"
-  }
-
-  set {
-    name  = "configs.cm.oidc\\.config"
-    value = <<-EOF
-      name: Azure
-      issuer: https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0
-      clientID: ${azuread_application.argocd.application_id}
-      clientSecret: ${azuread_application_password.argocd_sso.value}
-      requestedIDTokenClaims:
-        groups:
-            essential: true
-      requestedScopes:
-        - openid
-        - profile
-        - email
-    EOF
-  }
-
-  set {
-    name = "configs.secret.extra.oidc\\.azure\\.clientSecret"
-    value = azuread_application_password.argocd_sso.value
-  }
-
-  set {
-    name = "configs.rbac.policy\\.default"
-    value = "role:readonly"
-  }
-
-  set {
-    name = "configs.rbac.policy\\.csv"
-    value = <<-EOF
-      g, "${azuread_group.argocd_admins.object_id}", role:admin
-    EOF
-  }
-
-  set {
-    name = "configs.rbac.scopes"
-    value = "{groups, email}"
-  }
+      rbac = {
+        "policy.default" = "role:readonly"
+        "policy.csv" = <<-EOT
+          g, ${var.ARGO_CD_ADMIN_EMAIL}, role:admin
+        EOT
+        "scopes" = "[groups, email]"
+      }
+    }
+  })]
 }
 
 resource "helm_release" "argocd-image-updater" {

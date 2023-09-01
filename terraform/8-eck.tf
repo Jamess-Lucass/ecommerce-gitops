@@ -6,6 +6,21 @@ locals {
   kibana_ingress_host = "kibana.jameslucas.uk"
 }
 
+# resource "azuread_application" "kibana" {
+#   display_name = "Ecommerce Kibana"
+#   owners           = [data.azuread_client_config.current.object_id]
+
+#   web {
+#     redirect_uris = ["https://${local.kibana_ingress_host}/api/security/oidc/callback"]
+#   }
+# }
+
+# resource "azuread_application_password" "kibana_sso" {
+#   application_object_id = azuread_application.kibana.object_id
+#   display_name = "SSO"
+#   end_date_relative = "17520h" # 2 years
+# }
+
 resource "helm_release" "elastic" {
   name             = "elastic"
   repository       = "https://helm.elastic.co"
@@ -23,6 +38,17 @@ resource "kubernetes_namespace" "elastic_namespace" {
     helm_release.elastic
   ]
 }
+
+# resource "kubernetes_secret" "elastic_search_xpack_oidc_azure_secret" {
+#   metadata {
+#     name = "${local.elastic_search_name}-xpack-oidc-azure-client-secret"
+#     namespace = local.namespace
+#   }
+
+#   data = {
+#     "xpack.security.authc.realms.oidc.azuread.rp.client_secret" = azuread_application_password.kibana_sso.value
+#   }
+# }
 
 # Elastic
 resource "kubectl_manifest" "elastic_search" {
@@ -84,6 +110,28 @@ EOF
     kubernetes_namespace.elastic_namespace
   ]
 }
+
+# secureSettings:
+# - secretName: ${local.elastic_search_name}-xpack-oidc-azure-client-secret
+
+# xpack:
+#   security:
+#     authc:
+#       realms:
+#         oidc:
+#           azuread:
+#             order: 2
+#             rp.client_id: "${azuread_application.kibana.application_id}"
+#             rp.response_type: "code"
+#             rp.redirect_uri: "https://${local.kibana_ingress_host}/api/security/oidc/callback"
+#             op.issuer: "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0"
+#             op.authorization_endpoint: "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/oauth2/v2.0/authorize"
+#             op.token_endpoint: "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/oauth2/v2.0/token"
+#             op.userinfo_endpoint: "https://graph.microsoft.com/oidc/userinfo"
+#             op.endsession_endpoint: "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/oauth2/v2.0/logout"
+#             rp.post_logout_redirect_uri: "https://${local.kibana_ingress_host}/logged_out"
+#             op.jwkset_path: "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/discovery/v2.0/keys"
+#             claims.principal: email
 
 # Kibana
 resource "kubectl_manifest" "kibana" {
@@ -157,6 +205,12 @@ EOF
     kubernetes_namespace.elastic_namespace
   ]
 }
+
+# xpack.security.authc.providers:
+#   oidc.oidc1:
+#     order: 0
+#     realm: "azuread"
+#     description: "Log in with Azure"
 
 resource "kubernetes_ingress_v1" "kibana_ingress" {
   metadata {
