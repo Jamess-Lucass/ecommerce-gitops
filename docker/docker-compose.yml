@@ -1,0 +1,110 @@
+version: "3.9"
+
+services:
+  elasticsearch:
+    container_name: elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.1
+    environment:
+      - xpack.security.enabled=true
+      - "discovery.type=single-node"
+      - ELASTIC_PASSWORD=elastic
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    ports:
+      - 9200:9200
+
+  kibana:
+    container_name: kibana
+    image: docker.elastic.co/kibana/kibana:8.9.1
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=elastic
+      - XPACK_FLEET_AGENTS_FLEET_SERVER_HOSTS=["https://fleet-server:8220"]
+      - XPACK_FLEET_AGENTS_ELASTICSEARCH_HOSTS=["http://elasticsearch:9200"]
+      - XPACK_FLEET_REGISTRYURL=https://epr.elastic.co/
+    volumes:
+      - ./config/kibana.yml:/usr/share/kibana/config/kibana.yml
+    depends_on:
+      - elasticsearch
+    ports:
+      - 5601:5601
+    command: >
+      bash -c '
+        echo "Setting Password";
+        until curl -s -X POST -u elastic:elastic -H "Content-Type: application/json" http://elasticsearch:9200/_security/user/kibana_system/_password -d "{\"password\":\"elastic\"}" | grep -q "^{}"; do sleep 10; done;
+        echo "Set Password"
+        /usr/local/bin/kibana-docker
+      '
+
+  heartbeat:
+    container_name: heartbeat
+    image: docker.elastic.co/beats/heartbeat:8.9.1
+    user: root
+    volumes:
+      - ./config/heartbeat.yml:/usr/share/heartbeat/heartbeat.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - elasticsearch
+      - kibana
+    command: heartbeat -e -strict.perms=false
+
+  filebeat:
+    container_name: filebeat
+    image: docker.elastic.co/beats/filebeat:8.9.1
+    user: root
+    volumes:
+      - ./config/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      # - filebeatdata:/usr/share/filebeat/data/
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker:/var/lib/docker
+    depends_on:
+      - elasticsearch
+      - kibana
+    restart: on-failure
+    command: filebeat -e -strict.perms=false
+
+  fleet-server:
+    image: docker.elastic.co/beats/elastic-agent:8.9.1
+    ports:
+      - 8220:8220
+    environment:
+      FLEET_SERVER_ENABLE: "1"
+      FLEET_SERVER_POLICY_ID: "fleet-server-apm"
+      FLEET_SERVER_ELASTICSEARCH_HOST: http://elasticsearch:9200
+      FLEET_SERVER_ELASTICSEARCH_USERNAME: "elastic"
+      FLEET_SERVER_ELASTICSEARCH_PASSWORD: "elastic"
+      FLEET_URL: https://fleet-server:8220
+      KIBANA_FLEET_SETUP: "true"
+      KIBANA_FLEET_HOST: "http://kibana:5601"
+      KIBANA_FLEET_USERNAME: "elastic"
+      KIBANA_FLEET_PASSWORD: "elastic"
+    depends_on:
+      - elasticsearch
+      - kibana
+
+  apm:
+    image: docker.elastic.co/apm/apm-server:8.9.1
+    ports:
+      - 8200:8200
+    cap_add: ["CHOWN", "DAC_OVERRIDE", "SETGID", "SETUID"]
+    cap_drop: ["ALL"]
+    depends_on:
+      - elasticsearch
+      - kibana
+      - fleet-server
+    command: >
+      apm-server -e
+        -E apm-server.rum.enabled=true
+        -E setup.template.settings.index.number_of_replicas=0
+        -E apm-server.kibana.enabled=true
+        -E apm-server.kibana.host=http://kibana:5601
+        -E apm-server.api_key.elasticsearch.password=elastic
+        -E apm-server.api_key.elasticsearch.username=elastic
+        -E output.elasticsearch.hosts=["http://elasticsearch:9200"]
+        -E output.elasticsearch.username=elastic
+        -E output.elasticsearch.password=elastic
+        -E setup.kibana.host=http://kibana:5601
+
+volumes:
+  filebeatdata:
+    driver: local

@@ -276,6 +276,88 @@ spec:
           status: [200]
           body:
             - Healthy
+      
+      - type: http
+        id: user-service
+        tags: ["user", "service"]
+        name: User Service
+        schedule: "@every 10s"
+        hosts: ["ecommerce-user-service.default.svc:80/api/healthz"]
+        check.response:
+          status: [200]
+          body:
+            - Healthy
+
+      - type: http
+        id: catalog-service
+        tags: ["catalog", "service"]
+        name: Catalog Service
+        schedule: "@every 10s"
+        hosts: ["ecommerce-catalog-service.default.svc:80/api/healthz"]
+        check.response:
+          status: [200]
+          body:
+            - Healthy
+      
+      - type: http
+        id: basket-service
+        tags: ["basket", "service"]
+        name: Basket Service
+        schedule: "@every 10s"
+        hosts: ["ecommerce-basket-service.default.svc:80/api/healthz"]
+        check.response:
+          status: [200]
+          body:
+            - Healthy
+      
+      - type: http
+        id: order-service
+        tags: ["order", "service"]
+        name: Order Service
+        schedule: "@every 10s"
+        hosts: ["ecommerce-order-service.default.svc:80/api/healthz"]
+        check.response:
+          status: [200]
+          body:
+            - Healthy
+
+      - type: http
+        id: email-service
+        tags: ["email", "service"]
+        name: Email Service
+        schedule: "@every 10s"
+        hosts: ["ecommerce-email-service.default.svc:80/api/healthz"]
+        check.response:
+          status: [200]
+          body:
+            - Healthy
+
+      - type: http
+        id: login-ui
+        tags: ["login", "ui"]
+        name: Login UI
+        schedule: "@every 10s"
+        urls: "ecommerce-login-ui.default.svc:80"
+        check.response:
+          status: [200]
+
+      - type: http
+        id: shop-ui
+        tags: ["shop", "ui"]
+        name: Shop UI
+        schedule: "@every 10s"
+        urls: "ecommerce-shop-ui.default.svc:80"
+        check.response:
+          status: [200]
+
+      - type: http
+        id: internal-ui
+        tags: ["internal", "ui"]
+        name: Internal UI
+        schedule: "@every 10s"
+        urls: "ecommerce-internal-ui.default.svc:80"
+        check.response:
+          status: [200]
   deployment:
     podTemplate:
       spec:
