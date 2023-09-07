@@ -18,9 +18,9 @@ filebeat.autodiscover:
               paths:
                 - "/var/lib/docker/containers/${data.docker.container.id}/*.log"
               json:
-                # keys_under_root: true
-                # message_key: json
-                # overwrite_keys: true
+                keys_under_root: true
+                message_key: json
+                overwrite_keys: true
                 add_error_key: true
                 expand_keys: true
                 ignore_decoding_error: true
