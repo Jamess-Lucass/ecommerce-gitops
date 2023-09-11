@@ -1,4 +1,4 @@
-locals { 
+locals {
   argocd_ingress_host = "argocd.jameslucas.uk"
 }
 
@@ -16,7 +16,7 @@ resource "azuread_group" "argocd_admins" {
 # https://argo-cd.readthedocs.io/en/stable/operator-manual/user-management/microsoft/
 resource "azuread_application" "argocd" {
   display_name = "Ecommerce ArgoCD"
-  owners           = [data.azuread_client_config.current.object_id]
+  owners       = [data.azuread_client_config.current.object_id]
 
   web {
     redirect_uris = ["https://${local.argocd_ingress_host}/auth/callback"]
@@ -54,8 +54,8 @@ resource "azuread_application" "argocd" {
 
 resource "azuread_application_password" "argocd_sso" {
   application_object_id = azuread_application.argocd.object_id
-  display_name = "SSO"
-  end_date_relative = "17520h" # 2 years
+  display_name          = "SSO"
+  end_date_relative     = "17520h" # 2 years
 }
 
 resource "helm_release" "argocd" {
@@ -74,22 +74,22 @@ resource "helm_release" "argocd" {
           "external-dns.alpha.kubernetes.io/cloudflare-proxied" = true
         }
         ingressClassName = "nginx"
-        hosts = [local.argocd_ingress_host]
+        hosts            = [local.argocd_ingress_host]
       }
     }
 
     configs = {
       cm = {
-        url = "https://${local.argocd_ingress_host}"
+        url             = "https://${local.argocd_ingress_host}"
         "admin.enabled" = false
         "oidc.config" = yamlencode({
-          name = "Azure"
-          issuer = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0"
-          clientID = "${azuread_application.argocd.application_id}"
+          name         = "Azure"
+          issuer       = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/v2.0"
+          clientID     = "${azuread_application.argocd.application_id}"
           clientSecret = "$oidc.azure.clientSecret"
           requestedIDTokenClaims = {
             groups = {
-              essential= true
+              essential = true
             }
           }
           requestedScopes = ["openid", "profile", "email"]
@@ -104,13 +104,17 @@ resource "helm_release" "argocd" {
 
       rbac = {
         "policy.default" = "role:readonly"
-        "policy.csv" = <<-EOT
+        "policy.csv"     = <<-EOT
           g, ${var.ARGO_CD_ADMIN_EMAIL}, role:admin
         EOT
-        "scopes" = "[groups, email]"
+        "scopes"         = "[groups, email]"
       }
     }
   })]
+
+  depends_on = [
+    azurerm_kubernetes_cluster.aks
+  ]
 }
 
 resource "helm_release" "argocd-image-updater" {
@@ -119,4 +123,8 @@ resource "helm_release" "argocd-image-updater" {
   chart            = "argocd-image-updater"
   namespace        = "argocd"
   create_namespace = true
+
+  depends_on = [
+    azurerm_kubernetes_cluster.aks
+  ]
 }

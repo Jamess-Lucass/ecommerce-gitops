@@ -1,6 +1,8 @@
 locals {
   workload_namespace = "default"
   workload_name      = "workload-identity-sa"
+  vnet_name          = "vnet-01"
+  kubernetes_version = "1.27.3"
 }
 
 resource "azurerm_resource_group" "rg" {
@@ -8,10 +10,41 @@ resource "azurerm_resource_group" "rg" {
   location = "uksouth"
 }
 
+resource "azurerm_network_security_group" "aks_nodepool_subnet_nsg" {
+  name                = "nsg-${local.vnet_name}-nodepools"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+// VNet
+resource "azurerm_virtual_network" "virtual_network_01" {
+  name                = local.vnet_name
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  address_space       = ["10.240.0.0/16"]
+}
+
+resource "azurerm_subnet" "cluster_nodes_subnet" {
+  name                 = "snet-clusternodes"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.virtual_network_01.name
+
+  address_prefixes                              = ["10.240.0.0/22"]
+  private_endpoint_network_policies_enabled     = false
+  private_link_service_network_policies_enabled = false
+}
+
+resource "azurerm_subnet_network_security_group_association" "cluster_nodes_subnet_vnet_nsg_association" {
+  subnet_id                 = azurerm_subnet.cluster_nodes_subnet.id
+  network_security_group_id = azurerm_network_security_group.aks_nodepool_subnet_nsg.id
+}
+
 resource "azurerm_kubernetes_cluster" "aks" {
-  name                      = "aks-ecommerce-demo-01"
-  location                  = azurerm_resource_group.rg.location
-  resource_group_name       = azurerm_resource_group.rg.name
+  name                = "aks-ecommerce-demo-01"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  kubernetes_version        = local.kubernetes_version
   dns_prefix                = "jamess-lucass-ecommerce-demo"
   oidc_issuer_enabled       = true
   workload_identity_enabled = true
@@ -21,23 +54,55 @@ resource "azurerm_kubernetes_cluster" "aks" {
   }
 
   default_node_pool {
-    name                        = "default"
-    node_count                  = 2
-    vm_size                     = "Standard_D4s_v3"
+    name                        = "np-system"
+    node_count                  = 3
+    vm_size                     = "Standard_DS2_v2"
+    os_disk_size_gb             = 80
+    os_disk_type                = "Ephemeral"
+    os_sku                      = "Ubuntu"
     temporary_name_for_rotation = "akstempnode"
+    vnet_subnet_id              = azurerm_subnet.cluster_nodes_subnet.id
+    min_count                   = 3
+    max_count                   = 5
+    enable_auto_scaling         = true
+    type                        = "VirtualMachineScaleSets"
+    enable_node_public_ip       = false
+    custom_ca_trust_enabled = false
+    enable_host_encryption      = false
+    fips_enabled                = false
+    orchestrator_version        = local.kubernetes_version
+    upgrade_settings {
+      max_surge = "33%"
+    }
+
+    node_taints = ["CriticalAddonsOnly=true:NoSchedule"]
+
+    tags = {
+      type = "system"
+    }
   }
 
   identity {
     type = "SystemAssigned"
   }
 
-  tags = {
-    Environment = "Development"
-  }
-
   depends_on = [
     azurerm_resource_group.rg
   ]
+}
+
+resource "azurerm_kubernetes_cluster_node_pool" "user_node_pool" {
+  name                  = "npuser01"
+  kubernetes_cluster_id = azurerm_kubernetes_cluster.aks.id
+
+  mode           = "User"
+  vm_size        = "Standard_DS3_v2"
+  node_count     = 3
+  vnet_subnet_id = azurerm_subnet.cluster_nodes_subnet.id
+
+  tags = {
+    type = "user"
+  }
 }
 
 resource "azurerm_user_assigned_identity" "aks_workload_identity" {

@@ -1,8 +1,8 @@
 locals {
-  version = "8.9.1"
+  version             = "8.9.1"
   elastic_search_name = "elastic-search"
-  kibana_name = "kibana"
-  namespace = "elastic"
+  kibana_name         = "kibana"
+  namespace           = "elastic"
   kibana_ingress_host = "kibana.jameslucas.uk"
 }
 

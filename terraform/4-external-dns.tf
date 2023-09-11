@@ -18,4 +18,8 @@ resource "helm_release" "external-dns" {
     name  = "cloudflare.apiToken"
     value = var.CF_API_TOKEN
   }
+
+  depends_on = [
+    azurerm_kubernetes_cluster.aks
+  ]
 }

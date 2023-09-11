@@ -1,0 +1,13 @@
+config:
+  azure-native:clientId: b28a42b5-0f5e-458e-b6d6-ac7698058f6b
+  azure-native:clientSecret:
+    secure: AAABAKvHLTprfoCJfLiQRCw5AXfH+n16SynBxmUj6M6t1WW2d4sqO+4AVn7xSZaykac2Fg36Pvv4JN5SSG1eFCheh7kSDuFi
+  azure-native:location: UKSouth
+  azure-native:subscriptionId: 4fb08012-004f-442c-8d38-2ba0d269828a
+  azure-native:tenantId: f8eb0878-eb1a-428c-9a46-844511a426a3
+  azuread:clientId: b28a42b5-0f5e-458e-b6d6-ac7698058f6b
+  azuread:clientSecret:
+    secure: AAABAFuyy6Wrz4+CLmG0e+tHcOP5biXE0fsOGA6Xr2/utEnvqi2Bclkb56/zq4C9CkefTmKHUAqcraQJcUKd/3bKArEqKOAH
+  azuread:tenantId: f8eb0878-eb1a-428c-9a46-844511a426a3
+  ecommerce:cloudflareAPIToken:
+    secure: AAABANc2Qb7gNaW8c3U0i8HdkeC+DjvcriUwpVfXGg/7KdQ+gdxIQZDPLN5c+C4S23cq14FW29Voaf5cduwWESc0qlECD7ql

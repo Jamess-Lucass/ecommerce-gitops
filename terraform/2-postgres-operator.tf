@@ -4,6 +4,10 @@ resource "helm_release" "postgres-operator" {
   chart            = "postgres-operator"
   namespace        = "default"
   create_namespace = true
+
+  depends_on = [
+    azurerm_kubernetes_cluster.aks
+  ]
 }
 
 # move out
@@ -13,4 +17,8 @@ resource "helm_release" "mongodb-operator" {
   chart            = "community-operator"
   namespace        = "default"
   create_namespace = true
+
+  depends_on = [
+    azurerm_kubernetes_cluster.aks
+  ]
 }

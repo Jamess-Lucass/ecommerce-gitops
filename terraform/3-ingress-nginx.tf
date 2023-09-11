@@ -10,4 +10,8 @@ resource "helm_release" "nginix-ingress" {
     name  = "controller.service.externalTrafficPolicy"
     value = "Local"
   }
+
+  depends_on = [
+    azurerm_kubernetes_cluster.aks
+  ]
 }
