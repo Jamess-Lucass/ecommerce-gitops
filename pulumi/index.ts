@@ -238,7 +238,9 @@ new kubernetes.helm.v3.Release(
         },
         rbac: {
           "policy.default": "role:readonly",
-          "policy.csv": "",
+          "policy.csv": argoCDAdminsGroup.objectId.apply(
+            (id) => `g, ${id}, role:admin\n`
+          ),
           scopes: "[groups, email]",
         },
       },
@@ -264,7 +266,7 @@ new kubernetes.helm.v3.Release(
 // RabbitMQ
 //
 
-new kubernetes.helm.v3.Release(
+const rabbitMQ = new kubernetes.helm.v3.Release(
   "rabbitmq-cluster-operator",
   {
     chart: "rabbitmq-cluster-operator",
@@ -276,3 +278,30 @@ new kubernetes.helm.v3.Release(
   },
   { provider: k8sProvider }
 );
+
+new kubernetes.apiextensions.CustomResource(
+  "rabbitmq-cluster",
+  {
+    apiVersion: "rabbitmq.com/v1beta1",
+    kind: "RabbitmqCluster",
+    metadata: {
+      name: "rabbit-mq",
+      namespace: "default",
+    },
+    spec: {
+      resources: {
+        requests: {
+          cpu: "200m",
+          memory: "1Gi",
+        },
+        limits: {
+          cpu: "200m",
+          memory: "1Gi",
+        },
+      },
+    },
+  },
+  { provider: k8sProvider, dependsOn: [rabbitMQ] }
+);
+
+new 
