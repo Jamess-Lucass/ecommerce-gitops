@@ -24,9 +24,16 @@ const keyVaultReader = azure_native.authorization.getRoleDefinitionOutput({
   scope: `subscriptions/${subscriptionId}`,
 });
 
+const keyVaultAdministrator =
+  azure_native.authorization.getRoleDefinitionOutput({
+    roleDefinitionId: "00482a5a-887f-4fb3-b363-3b7fe8e74483",
+    scope: `subscriptions/${subscriptionId}`,
+  });
+
 export const roles = {
   clusterAdmin,
   networkContributor,
   keyVaultSecretsUser,
   keyVaultReader,
+  keyVaultAdministrator,
 };

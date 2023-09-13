@@ -285,7 +285,7 @@ export const aks =
           enabled: false,
         },
         diskCSIDriver: {
-          enabled: false,
+          enabled: true,
         },
         fileCSIDriver: {
           enabled: false,
@@ -381,12 +381,6 @@ export const kv = new azure_native.keyvault.Vault(
         name: "standard",
       },
       tenantId: azureNativeConfig.require("tenantId"),
-      networkAcls: {
-        bypass: "AzureServices",
-        defaultAction: "Deny",
-        ipRules: [],
-        virtualNetworkRules: [],
-      },
       enableRbacAuthorization: true,
       enabledForDeployment: false,
       enabledForDiskEncryption: false,
@@ -398,6 +392,15 @@ export const kv = new azure_native.keyvault.Vault(
   },
   { dependsOn: [resourceGroup] }
 );
+
+const keyVaultAdmins = new azuread.Group("key-vault-admins", {
+  displayName: "aks-key-vault-admins",
+  description: kv.name.apply(
+    (name) => `Principals in this group are key vault admins of ${name}`
+  ),
+  owners: [current.then((current) => current.objectId)],
+  securityEnabled: true,
+});
 
 //
 // Role Assingment
@@ -411,6 +414,20 @@ new azure_native.authorization.RoleAssignment(
     scope: kv.id,
   },
   { dependsOn: [kv, aks] }
+);
+
+//
+// Role Assingment
+//
+new azure_native.authorization.RoleAssignment(
+  "role-assignment-key-vault-admins-group-key-vault-administrator",
+  {
+    principalId: keyVaultAdmins.objectId,
+    principalType: azure_native.authorization.PrincipalType.Group,
+    roleDefinitionId: roles.keyVaultAdministrator.id,
+    scope: kv.id,
+  },
+  { dependsOn: [kv, keyVaultAdmins] }
 );
 
 //
