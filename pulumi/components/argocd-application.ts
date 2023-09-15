@@ -63,7 +63,7 @@ export class ArgoCDApplication extends pulumi.ComponentResource {
           },
         },
       },
-      { parent: this }
+      { parent: this, ...opts }
     );
   }
 }

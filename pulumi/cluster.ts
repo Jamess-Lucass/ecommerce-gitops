@@ -33,9 +33,16 @@ const nodePoolResourceGroupName = "rg-ecommerce-demo-01-nodepools";
 //
 // Groups
 //
-const clusterAdminsGroup = new azuread.Group("example", {
+const clusterAdminsGroup = new azuread.Group("aks-cluster-admins", {
   displayName: "aks-cluster-admins",
   description: `Principals in this group are cluster admins of ${clusterName}`,
+  owners: [current.then((current) => current.objectId)],
+  securityEnabled: true,
+});
+
+const clusterReadersGroup = new azuread.Group("aks-cluster-readers", {
+  displayName: "aks-cluster-readers",
+  description: `Principals in this group have read access of ${clusterName}`,
   owners: [current.then((current) => current.objectId)],
   securityEnabled: true,
 });
@@ -344,6 +351,17 @@ new azure_native.authorization.RoleAssignment(
     scope: aks.id,
   },
   { dependsOn: [aks, clusterAdminsGroup] }
+);
+
+new azure_native.authorization.RoleAssignment(
+  "role-assignment-aad-group-cluster-readers",
+  {
+    principalId: clusterReadersGroup.objectId,
+    principalType: azure_native.authorization.PrincipalType.Group,
+    roleDefinitionId: roles.clusterReader.id,
+    scope: aks.id,
+  },
+  { dependsOn: [aks, clusterReadersGroup] }
 );
 
 export const keyvaultAddonProfile = aks.addonProfiles.apply(
